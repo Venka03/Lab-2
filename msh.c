@@ -173,28 +173,51 @@ int main(int argc, char* argv[])
 		signal(SIGINT, siginthandler);
 
 		if (run_history)
-    {
-        run_history=0;
-    }
-    else{
-        // Prompt 
-        write(STDERR_FILENO, "MSH>>", strlen("MSH>>"));
-
-        // Get command
-        //********** DO NOT MODIFY THIS PART. IT DISTINGUISH BETWEEN NORMAL/CORRECTION MODE***************
-        executed_cmd_lines++;
-        if( end != 0 && executed_cmd_lines < end) {
-            command_counter = read_command_correction(&argvv, filev, &in_background, cmd_lines[executed_cmd_lines]);
+        {
+            run_history=0;
         }
-        else if( end != 0 && executed_cmd_lines == end)
-            return 0;
-        else
-            command_counter = read_command(&argvv, filev, &in_background); //NORMAL MODE
-    }
+        else{
+            // Prompt 
+            write(STDERR_FILENO, "MSH>>", strlen("MSH>>"));
+
+            // Get command
+            //********** DO NOT MODIFY THIS PART. IT DISTINGUISH BETWEEN NORMAL/CORRECTION MODE***************
+            executed_cmd_lines++;
+            if( end != 0 && executed_cmd_lines < end) {
+                command_counter = read_command_correction(&argvv, filev, &in_background, cmd_lines[executed_cmd_lines]);
+            }
+            else if( end != 0 && executed_cmd_lines == end)
+                return 0;
+            else
+                command_counter = read_command(&argvv, filev, &in_background); //NORMAL MODE
+        }
 		//************************************************************************************************
 
 
 		/************************ STUDENTS CODE ********************************/
+
+
+        int pid;
+        pid = fork();
+        switch (pid){
+            case -1:
+                perror("Error in fork");
+                return -1;
+            case 0:
+                execvp(argvv[0][0], argvv[0]);
+                perror("Error in execvp");
+                return -1;
+            default:
+                    if (wait(&status) == -1){
+                        perror("Error in wait");
+                        return -1;
+                    }
+        }
+
+
+
+        //************************************************************************************************
+
 	   if (command_counter > 0) {
 			if (command_counter > MAX_COMMANDS){
 				printf("Error: Maximum number of commands is %d \n", MAX_COMMANDS);
