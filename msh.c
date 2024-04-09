@@ -38,16 +38,16 @@ void siginthandler(int param)
 
 struct command
 {
-  // Store the number of commands in argvv
-  int num_commands;
-  // Store the number of arguments of each command
-  int *args;
-  // Store the commands
-  char ***argvv;
-  // Store the I/O redirection
-  char filev[3][64];
-  // Store if the command is executed in background or foreground
-  int in_background;
+    // Store the number of commands in argvv
+    int num_commands;
+    // Store the number of arguments of each command
+    int *args;
+    // Store the commands
+    char ***argvv;
+    // Store the I/O redirection
+    char filev[3][64];
+    // Store if the command is executed in background or foreground
+    int in_background;
 };
 
 int history_size = 20;
@@ -199,20 +199,35 @@ int main(int argc, char* argv[])
 
         int pid;
         pid = fork();
-        switch (pid){
-            case -1:
-                perror("Error in fork");
-                return -1;
-            case 0:
-                execvp(argvv[0][0], argvv[0]);
-                perror("Error in execvp");
-                return -1;
-            default:
+        if (in_background){
+            switch (pid){
+                case -1:
+                    perror("Error in fork");
+                    return -1;
+                case 0:
+                    printf("[%d]\n", getpid()); // print child's pid
+                    execvp(argvv[0][0], argvv[0]);
+                    perror("Error in execvp");
+                    return -1;
+            }
+        }
+        else {
+            switch (pid){
+                case -1:
+                    perror("Error in fork");
+                    return -1;
+                case 0:
+                    execvp(argvv[0][0], argvv[0]);
+                    perror("Error in execvp");
+                    return -1;
+                default:
                     if (wait(&status) == -1){
                         perror("Error in wait");
                         return -1;
                     }
+            }
         }
+        
 
 
 
