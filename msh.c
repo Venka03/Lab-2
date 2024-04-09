@@ -205,6 +205,45 @@ int main(int argc, char* argv[])
                     perror("Error in fork");
                     exit(-1);
                 case 0:
+                    if (strcmp(filev[0], "0") != 0){ // input file
+                        int df = open(filev[0], O_RDONLY);
+                        
+                        if (df == -1){
+                            perror("Error in open");
+                            return -1;
+                        }
+                        close(STDIN_FILENO);
+                        if (dup2(df, STDIN_FILENO) == -1){
+                            perror("Error in dup2");
+                            return -1;
+                        }
+                    }
+
+                    if (strcmp(filev[1], "0") != 0){ // output file
+                        int df = open(filev[1], O_WRONLY | O_CREAT, 0666);
+                        if (df == -1){
+                            perror("Error in open");
+                            return -1;
+                        }
+                        close(STDOUT_FILENO);
+                        if (dup2(df, STDOUT_FILENO) == -1){
+                            perror("Error in dup2");
+                            return -1;
+                        }
+                    }
+
+                    if (strcmp(filev[2], "0") != 0){ // error file
+                        int df = open(filev[2], O_WRONLY | O_CREAT, 0666);
+                        if (df == -1){
+                            perror("Error in open");
+                            return -1;
+                        }
+                        close(STDERR_FILENO);
+                        if (dup2(df, STDERR_FILENO) == -1){
+                            perror("Error in dup2");
+                            return -1;
+                        }
+                    }
                     execvp(argvv[0][0], argvv[0]);
                     perror("Error in execvp");
                     return -1;
@@ -220,12 +259,36 @@ int main(int argc, char* argv[])
             int fd[command_counter-1][2];
             pipe(fd[0]); 
             pid = fork();
-            
+
+            if (strcmp(filev[2], "0") != 0){ // error file
+                int df = open(filev[2], O_WRONLY | O_CREAT, 0666);
+                if (df == -1){
+                    perror("Error in open");
+                    return -1;
+                }
+                close(STDERR_FILENO);
+                if (dup2(df, STDERR_FILENO) == -1){
+                    perror("Error in dup2");
+                    return -1;
+                }
+            }
             switch(pid){
                 case -1:
                     perror("Error in fork");
                     return -1;
                 case 0:
+                    if (strcmp(filev[0], "0") != 0){ // input file
+                        int df = open(filev[0], O_RDONLY);
+                        if (df == -1){
+                            perror("Error in open");
+                            return -1;
+                        }
+                        close(STDIN_FILENO);
+                        if (dup2(df, STDIN_FILENO) == -1){
+                            perror("Error in dup2");
+                            return -1;
+                        }
+                    }
                     close(STDOUT_FILENO); 
                     dup(fd[0][STDOUT_FILENO]);
                     close(fd[0][STDIN_FILENO]);
@@ -271,6 +334,18 @@ int main(int argc, char* argv[])
                     perror("Error in fork");
                     return -1;
                 case 0:
+                    if (strcmp(filev[1], "0") != 0){ // output file
+                        int df = open(filev[1], O_WRONLY | O_CREAT, 0666);
+                        if (df == -1){
+                            perror("Error in open");
+                            return -1;
+                        }
+                        close(STDOUT_FILENO);
+                        if (dup2(df, STDOUT_FILENO) == -1){
+                            perror("Error in dup2");
+                            return -1;
+                        }
+                    }
                     close(STDIN_FILENO); 
                     dup(fd[command_counter-2][STDIN_FILENO]);
                     close(fd[command_counter-2][STDOUT_FILENO]); 
