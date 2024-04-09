@@ -198,24 +198,12 @@ int main(int argc, char* argv[])
 
 
         int pid;
-        pid = fork();
-        if (in_background){
+        if (command_counter == 1){
+            pid = fork();
             switch (pid){
                 case -1:
                     perror("Error in fork");
-                    return -1;
-                case 0:
-                    printf("[%d]\n", getpid()); // print child's pid
-                    execvp(argvv[0][0], argvv[0]);
-                    perror("Error in execvp");
-                    return -1;
-            }
-        }
-        else {
-            switch (pid){
-                case -1:
-                    perror("Error in fork");
-                    return -1;
+                    exit(-1);
                 case 0:
                     execvp(argvv[0][0], argvv[0]);
                     perror("Error in execvp");
@@ -225,7 +213,81 @@ int main(int argc, char* argv[])
                         perror("Error in wait");
                         return -1;
                     }
+                        
             }
+        }
+        else {
+            int fd[command_counter-1][2];
+            pipe(fd[0]); 
+            pid = fork();
+            
+            switch(pid){
+                case -1:
+                    perror("Error in fork");
+                    return -1;
+                case 0:
+                    close(STDOUT_FILENO); 
+                    dup(fd[0][STDOUT_FILENO]);
+                    close(fd[0][STDIN_FILENO]);
+                    execvp(argvv[0][0], argvv[0]);
+                    perror("Error in execvp");
+                    return -1;
+                default:
+                    waitpid(pid, &status, 0);
+            }
+
+            for (int i=1; i<command_counter-1;i++){
+                pipe(fd[i]);
+                pid = fork();
+                switch (pid){
+                    case -1:
+                        perror("Error in fork");
+                        return -1;
+                    case 0:
+                        close(STDIN_FILENO);
+                        dup(fd[i-1][STDIN_FILENO]); // receive by one pipe
+                        close(fd[i-1][STDOUT_FILENO]);
+
+                        close(STDOUT_FILENO);
+                        dup(fd[i][STDOUT_FILENO]); // send by another pipe
+                        close(fd[i][STDIN_FILENO]);
+                        execvp(argvv[i][0], argvv[i]);
+                        perror("Error in execvp");
+                        return -1;
+                    default:
+                    	if (wait(&status) == -1){
+                    	    perror("Error in wait");
+                    	    return -1;
+                    	}
+
+                }
+                close(fd[i-1][STDIN_FILENO]);
+                close(fd[i-1][STDOUT_FILENO]);
+            }
+
+            pid = fork();
+            switch(pid){
+                case -1:
+                    perror("Error in fork");
+                    return -1;
+                case 0:
+                    close(STDIN_FILENO); 
+                    dup(fd[command_counter-2][STDIN_FILENO]);
+                    close(fd[command_counter-2][STDOUT_FILENO]); 
+                    execvp(argvv[command_counter-1][0], argvv[command_counter-1]);
+                    perror("Error in execvp");
+                    return -1;
+                /*
+                default:
+                    if (wait(&status) == -1){
+                        perror("Error in wait");
+                        return -1;
+                    }
+                */
+            }
+            close(fd[command_counter-2][STDIN_FILENO]);
+            close(fd[command_counter-2][STDOUT_FILENO]);
+
         }
         
 
