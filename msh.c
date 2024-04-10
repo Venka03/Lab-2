@@ -94,7 +94,7 @@ void store_command(char ***argvv, char filev[3][64], int in_background, struct c
     }
 
     (*cmd).in_background = in_background;
-    (*cmd).num_commands = num_commands-1;
+    (*cmd).num_commands = num_commands-1; // why do we subtracts?
     (*cmd).argvv = (char ***) calloc((num_commands) ,sizeof(char **));
     (*cmd).args = (int*) calloc(num_commands , sizeof(int));
 
@@ -175,6 +175,7 @@ int main(int argc, char* argv[])
 		if (run_history)
         {
             run_history=0;
+            // add code here
         }
         else{
             // Prompt 
@@ -203,7 +204,7 @@ int main(int argc, char* argv[])
             switch (pid){
                 case -1:
                     perror("Error in fork");
-                    exit(-1);
+                    return -1;
                 case 0:
                     if (strcmp(filev[0], "0") != 0){ // input file
                         int df = open(filev[0], O_RDONLY);
@@ -296,7 +297,10 @@ int main(int argc, char* argv[])
                     perror("Error in execvp");
                     return -1;
                 default:
-                    waitpid(pid, &status, 0);
+                    if (wait(&status) == -1){
+                        perror("Error in wait");
+                        return -1;
+                    }   
             }
 
             for (int i=1; i<command_counter-1;i++){
@@ -318,14 +322,13 @@ int main(int argc, char* argv[])
                         perror("Error in execvp");
                         return -1;
                     default:
+                        close(fd[i-1][STDIN_FILENO]);
+                        close(fd[i-1][STDOUT_FILENO]);
                     	if (wait(&status) == -1){
                     	    perror("Error in wait");
                     	    return -1;
                     	}
-
                 }
-                close(fd[i-1][STDIN_FILENO]);
-                close(fd[i-1][STDOUT_FILENO]);
             }
 
             pid = fork();
@@ -352,16 +355,17 @@ int main(int argc, char* argv[])
                     execvp(argvv[command_counter-1][0], argvv[command_counter-1]);
                     perror("Error in execvp");
                     return -1;
-                /*
+                
                 default:
+                    close(fd[command_counter-2][STDIN_FILENO]);
+                    close(fd[command_counter-2][STDOUT_FILENO]);
                     if (wait(&status) == -1){
                         perror("Error in wait");
                         return -1;
                     }
-                */
+                
             }
-            close(fd[command_counter-2][STDIN_FILENO]);
-            close(fd[command_counter-2][STDOUT_FILENO]);
+            
 
         }
         
