@@ -32,6 +32,39 @@ void siginthandler(int param)
 	exit(0);
 }
 
+int mycalc(char **argvv, int *acc){
+    int result, a, b;
+    if (!is_numeric(argvv[1]))
+        return -1;
+    a = atoi(argvv[1]);
+    if (!is_numeric(argvv[3]))
+        return -1;
+    b = atoi(argvv[3]);
+    if (!strcmp(argvv[2], "add")){
+        result = a + b;
+        *acc = *acc + result;
+        printf("[OK] %d + %d = %d; Acc %d\n", a, b, result, *acc);
+    }
+    else if (!strcmp(argvv[2], "mul")){
+        result = a * b;
+        printf("[OK] %d * %d = %d\n", a, b, result);
+
+    }
+    else if (!strcmp(argvv[2], "div")){
+        if (b == 0){
+            printf("[ERROR] Division by zero cannot be performed\n");
+            return -1;
+        }
+        else {
+            result = a / b;
+            printf("[OK] %d / %d = %d; Remainder %d\n", a, b, result, a % b);
+        }
+    }
+    else 
+        return -1;
+    return 1;
+}
+
 /* myhistory */
 
 /* myhistory */
@@ -161,6 +194,7 @@ int main(int argc, char* argv[])
 
 	char ***argvv = NULL;
 	int num_commands;
+    int Acc = 0;
 
 	history = (struct command*) malloc(history_size *sizeof(struct command));
 	int run_history = 0;
@@ -196,96 +230,98 @@ int main(int argc, char* argv[])
 
 
 		/************************ STUDENTS CODE ********************************/
+        
 
-
-        int pid;
-        if (command_counter == 1){
-            pid = fork();
-            switch (pid){
-                case -1:
-                    perror("Error in fork");
-                    return -1;
-                case 0:
-                    if (strcmp(filev[0], "0") != 0){ // input file
-                        int df = open(filev[0], O_RDONLY);
-                        
-                        if (df == -1){
-                            perror("Error in open");
-                            return -1;
-                        }
-                        close(STDIN_FILENO);
-                        if (dup2(df, STDIN_FILENO) == -1){
-                            perror("Error in dup2");
-                            return -1;
-                        }
-                    }
-
-                    if (strcmp(filev[1], "0") != 0){ // output file
-                        int df = open(filev[1], O_WRONLY | O_CREAT, 0666);
-                        if (df == -1){
-                            perror("Error in open");
-                            return -1;
-                        }
-                        close(STDOUT_FILENO);
-                        if (dup2(df, STDOUT_FILENO) == -1){
-                            perror("Error in dup2");
-                            return -1;
-                        }
-                    }
-
-                    if (strcmp(filev[2], "0") != 0){ // error file
-                        int df = open(filev[2], O_WRONLY | O_CREAT, 0666);
-                        if (df == -1){
-                            perror("Error in open");
-                            return -1;
-                        }
-                        close(STDERR_FILENO);
-                        if (dup2(df, STDERR_FILENO) == -1){
-                            perror("Error in dup2");
-                            return -1;
-                        }
-                    }
-                    execvp(argvv[0][0], argvv[0]);
-                    perror("Error in execvp");
-                    return -1;
-                default:
-                    if (wait(&status) == -1){
-                        perror("Error in wait");
-                        return -1;
-                    }
-                        
-            }
+        if (strcmp(argvv[0][0], "mycalc") == 0){
+            if (strcmp(filev[0], "0") != 0 || strcmp(filev[1], "0") != 0 || strcmp(filev[2], "0") != 0)
+                printf("mycalc cannot have file redirections.")
+            // do other tests
+            else 
+                mycalc(argvv[0], &Acc);
         }
         else {
-            int fd[command_counter-1][2];
-            pipe(fd[0]); 
-            pid = fork();
-
-            if (strcmp(filev[2], "0") != 0){ // error file
-                int df = open(filev[2], O_WRONLY | O_CREAT, 0666);
-                if (df == -1){
+            int fdi, fdo, fde;
+            if (strcmp(filev[0], "0") != 0){ // input file
+                fdi = open(filev[0], O_RDONLY);
+                if (fdi == -1){
                     perror("Error in open");
                     return -1;
                 }
-                close(STDERR_FILENO);
-                if (dup2(df, STDERR_FILENO) == -1){
-                    perror("Error in dup2");
+            }
+            if (strcmp(filev[1], "0") != 0){ // output file
+                fdo = open(filev[1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                if (fdo == -1){
+                    perror("Error in open");
                     return -1;
                 }
             }
+            if (strcmp(filev[2], "0") != 0){ // error file
+                fde = open(filev[2], O_WRONLY | O_CREAT, 0666);
+                if (fde == -1){
+                    perror("Error in open");
+                    return -1;
+                }
+            }
+            int pid;
+            if (command_counter == 1){
+                pid = fork();
+                switch (pid){
+                    case -1:
+                        perror("Error in fork");
+                        return -1;
+                    case 0:
+                        if (strcmp(filev[0], "0") != 0){ // input file
+                            close(STDIN_FILENO);
+                            if (dup2(fdi, STDIN_FILENO) == -1){
+                                perror("Error in dup2");
+                                return -1;
+                            }
+                        }
+                        if (strcmp(filev[1], "0") != 0){ // output file
+                            close(STDOUT_FILENO);
+                            if (dup2(fdo, STDOUT_FILENO) == -1){
+                                perror("Error in dup2");
+                                return -1;
+                            }
+                        }
+                        if (strcmp(filev[2], "0") != 0){ // error file
+                            close(STDERR_FILENO);
+                            if (dup2(fde, STDERR_FILENO) == -1){
+                                perror("Error in dup2");
+                                return -1;
+                            }
+                        }
+                        execvp(argvv[0][0], argvv[0]);
+                        perror("Error in execvp");
+                        return -1;
+                    default:
+                        if (!in_background){
+                            if (wait(&status) == -1){
+                                perror("Error in wait");
+                                return -1;
+                            }
+                        }
+                }
+            }
+            else {
+            int fd[command_counter-1][2];
+            pipe(fd[0]); 
+            pid = fork();
             switch(pid){
                 case -1:
                     perror("Error in fork");
                     return -1;
                 case 0:
                     if (strcmp(filev[0], "0") != 0){ // input file
-                        int df = open(filev[0], O_RDONLY);
-                        if (df == -1){
-                            perror("Error in open");
+                        close(STDIN_FILENO);
+                        if (dup2(fdi, STDIN_FILENO) == -1){
+                            perror("Error in dup2");
                             return -1;
                         }
-                        close(STDIN_FILENO);
-                        if (dup2(df, STDIN_FILENO) == -1){
+                    }
+                    if (strcmp(filev[2], "0") != 0){ // error file
+                        close(STDERR_FILENO);
+                        if (dup2(fde, STDERR_FILENO) == -1){
                             perror("Error in dup2");
                             return -1;
                         }
@@ -297,10 +333,13 @@ int main(int argc, char* argv[])
                     perror("Error in execvp");
                     return -1;
                 default:
-                    if (wait(&status) == -1){
-                        perror("Error in wait");
-                        return -1;
-                    }   
+                    if (!in_background){
+                        if (wait(&status) == -1){
+                            perror("Error in wait");
+                            return -1;
+                        } 
+                    }
+                      
             }
 
             for (int i=1; i<command_counter-1;i++){
@@ -318,16 +357,25 @@ int main(int argc, char* argv[])
                         close(STDOUT_FILENO);
                         dup(fd[i][STDOUT_FILENO]); // send by another pipe
                         close(fd[i][STDIN_FILENO]);
+                        if (strcmp(filev[2], "0") != 0){ // error file
+                            close(STDERR_FILENO);
+                            if (dup2(fde, STDERR_FILENO) == -1){
+                                perror("Error in dup2");
+                                return -1;
+                            }
+                        }
                         execvp(argvv[i][0], argvv[i]);
                         perror("Error in execvp");
                         return -1;
                     default:
                         close(fd[i-1][STDIN_FILENO]);
                         close(fd[i-1][STDOUT_FILENO]);
-                    	if (wait(&status) == -1){
-                    	    perror("Error in wait");
-                    	    return -1;
-                    	}
+                    	if (!in_background){
+                            if (wait(&status) == -1){
+                                perror("Error in wait");
+                                return -1;
+                            }
+                        }
                 }
             }
 
@@ -338,13 +386,15 @@ int main(int argc, char* argv[])
                     return -1;
                 case 0:
                     if (strcmp(filev[1], "0") != 0){ // output file
-                        int df = open(filev[1], O_WRONLY | O_CREAT, 0666);
-                        if (df == -1){
-                            perror("Error in open");
+                        close(STDOUT_FILENO);
+                        if (dup2(fdo, STDOUT_FILENO) == -1){
+                            perror("Error in dup2");
                             return -1;
                         }
-                        close(STDOUT_FILENO);
-                        if (dup2(df, STDOUT_FILENO) == -1){
+                    }
+                    if (strcmp(filev[2], "0") != 0){ // error file
+                        close(STDERR_FILENO);
+                        if (dup2(fde, STDERR_FILENO) == -1){
                             perror("Error in dup2");
                             return -1;
                         }
@@ -359,31 +409,35 @@ int main(int argc, char* argv[])
                 default:
                     close(fd[command_counter-2][STDIN_FILENO]);
                     close(fd[command_counter-2][STDOUT_FILENO]);
-                    if (wait(&status) == -1){
-                        perror("Error in wait");
-                        return -1;
+                    if (!in_background){
+                        if (wait(&status) == -1){
+                            perror("Error in wait");
+                            return -1;
+                        }
                     }
+                    
                 
             }
-            
-
         }
-        
+        }
 
 
 
         //************************************************************************************************
+        printf("Command ended\n");
+        /*
+        if (command_counter > 0) {
+                if (command_counter > MAX_COMMANDS){
+                    printf("Error: Maximum number of commands is %d \n", MAX_COMMANDS);
+                }
+                else {
+                    // Print command
+                    print_command(argvv, filev, in_background);
+                }
+            }
+        }
+        */
+    }
+    return 0;
 
-	   if (command_counter > 0) {
-			if (command_counter > MAX_COMMANDS){
-				printf("Error: Maximum number of commands is %d \n", MAX_COMMANDS);
-			}
-			else {
-				// Print command
-				print_command(argvv, filev, in_background);
-			}
-		}
-	}
-	
-	return 0;
 }
